@@ -1,121 +1,51 @@
-# Simple Python API
+# Flask API Quality Starter
 
-A beginner-friendly Python API project using Flask.
+[![Python API tests](https://github.com/HamzaZahid172/simple-python-api/actions/workflows/ci.yml/badge.svg)](https://github.com/HamzaZahid172/simple-python-api/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0.3-000000?logo=flask)
 
-## Features
+A small Flask API that demonstrates **testable HTTP endpoints**, request validation, reliable status codes and a GitHub Actions test matrix. Suitable for learning API automation and submitting a first meaningful open-source pull request.
 
-- Run a small web server
-- Create API endpoints
-- Return JSON responses
-- Ready to push to GitHub
-
-## Project Structure
-
-```text
-simple-python-api/
-├── app.py
-├── requirements.txt
-└── README.md
-```
-
-## Setup
-
-### 1. Create virtual environment
+## Quick start
 
 ```bash
-python -m venv venv
-```
-
-### 2. Activate virtual environment
-
-Mac/Linux:
-
-```bash
-source venv/bin/activate
-```
-
-Windows:
-
-```bash
-venv\\Scripts\\activate
-```
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Run the server
-
-```bash
+python3 -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 python app.py
 ```
 
-The API will run at:
+API runs on **http://127.0.0.1:8000**. This demo uses an **in-memory store**, so data resets when the server restarts. It is not a production database or authentication service.
 
-```text
-http://localhost:5000
-```
+## API routes
 
-## API Endpoints
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/` | API overview |
+| GET | `/health` | Health check |
+| GET | `/items` | List items |
+| GET | `/items?category=course` | Filter items |
+| GET | `/items/1` | Fetch one item or return 404 |
+| POST | `/add-item` | Create item with JSON validation |
 
-### Home
-
-```http
-GET /
-```
-
-### Health Check
-
-```http
-GET /health
-```
-
-### Get All Items
-
-```http
-GET /items
-```
-
-### Get Single Item
-
-```http
-GET /items/1
-```
-
-### Add Item
-
-```http
-POST /add-item
-```
-
-Body:
-
-```json
-{
-  "name": "Flask API",
-  "category": "project"
-}
-```
-
-## Test with curl
+Example:
 
 ```bash
-curl http://localhost:5000/health
-curl http://localhost:5000/items
-curl -X POST http://localhost:5000/add-item \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Flask API","category":"project"}'
+curl -X POST http://127.0.0.1:8000/add-item \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Integration tests","category":"project"}'
 ```
 
-## Push to GitHub
+A successful create returns **201** and a JSON item with an ID. Invalid bodies return **400**; a non-JSON request returns **415**. Item `name` and `category` must be non-empty strings up to 100 characters.
+
+## Tests and CI
 
 ```bash
-git init
-git add .
-git commit -m "Initial simple Python API project"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/simple-python-api.git
-git push -u origin main
+python -m unittest discover -s tests -v
 ```
+
+Tests verify health, listing/filtering, missing items, creates, malformed payloads, field validation and isolation between app instances. GitHub Actions runs this suite on Python **3.11 and 3.12** for pull requests and pushes to `main`.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose a focused issue and submit a tested pull request. This is a learning project, and real code reviews are welcome.
