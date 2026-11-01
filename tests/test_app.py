@@ -55,6 +55,51 @@ class ApiTests(unittest.TestCase):
             with self.subTest(body=body):
                 self.assertEqual(self.client.post("/add-item", json=body).status_code, 400)
 
+    def test_pagination_keeps_legacy_response(self):
+        response = self.client.get("/items")
+        self.assertEqual(set(response.json), {"items", "count"})
+        self.assertEqual(response.json["count"], 2)
+
+    def test_paginated_listing_returns_total_and_page_size(self):
+        self.client.post("/add-item", json={"name": "Third", "category": "project"})
+        response = self.client.get("/items?limit=2&offset=1")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["count"], 2)
+        self.assertEqual(response.json["total"], 3)
+        self.assertEqual(response.json["limit"], 2)
+        self.assertEqual(response.json["offset"], 1)
+        self.assertEqual([item["id"] for item in response.json["items"]], [2, 3])
+
+    def test_pagination_applies_after_category_filter(self):
+        self.client.post("/add-item", json={"name": "First", "category": "project"})
+        self.client.post("/add-item", json={"name": "Second", "category": "project"})
+        response = self.client.get("/items?category=project&limit=1&offset=1")
+        self.assertEqual(response.json["total"], 2)
+        self.assertEqual(response.json["count"], 1)
+        self.assertEqual(response.json["items"][0]["name"], "Second")
+
+    def test_pagination_defaults_and_out_of_range_offset(self):
+        response = self.client.get("/items?offset=1")
+        self.assertEqual(response.json["limit"], 20)
+        self.assertEqual(response.json["count"], 1)
+        self.assertEqual(response.json["total"], 2)
+        empty_page = self.client.get("/items?limit=5&offset=99")
+        self.assertEqual(empty_page.json["items"], [])
+        self.assertEqual(empty_page.json["total"], 2)
+
+    def test_invalid_pagination_inputs(self):
+        bad_queries = (
+            "?limit=0", "?limit=101", "?limit=-1", "?limit=abc",
+            "?limit=1.5", "?limit=9999999999999999999999",
+            "?offset=-1", "?offset=hello", "?offset=1.5",
+            "?offset=9999999999999999999999",
+        )
+        for query in bad_queries:
+            with self.subTest(query=query):
+                response = self.client.get("/items" + query)
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("error", response.json)
+
     def test_isolated_app_instances(self):
         self.client.post("/add-item", json={"name": "first", "category": "test"})
         self.assertEqual(create_app().test_client().get("/items").json["count"], 2)

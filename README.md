@@ -25,6 +25,7 @@ API runs on **http://127.0.0.1:8000**. This demo uses an **in-memory store**, so
 | GET | `/health` | Health check |
 | GET | `/items` | List items |
 | GET | `/items?category=course` | Filter items |
+| GET | `/items?limit=2&offset=1` | Paginate items, with total matching count |
 | GET | `/items/1` | Fetch one item or return 404 |
 | POST | `/add-item` | Create item with JSON validation |
 
@@ -35,6 +36,22 @@ curl -X POST http://127.0.0.1:8000/add-item \
   -H 'Content-Type: application/json' \
   -d '{"name":"Integration tests","category":"project"}'
 ```
+
+### Optional pagination
+
+`GET /items` remains backward compatible when `limit` and `offset` are omitted.
+To paginate, pass `limit` (1–100) and/or `offset` (a non-negative integer).
+If only `offset` is provided, the default page size is 20. Filtering by
+`category` happens **before** pagination.
+
+```bash
+curl 'http://127.0.0.1:8000/items?category=course&limit=1&offset=0'
+```
+
+A paginated response includes `items`, `count` (items in the current page),
+`total` (all matching items), `offset` and `limit`. Invalid values return
+**400** with an explanatory JSON error. This feature is useful for writing
+API-client and pagination regression tests.
 
 A successful create returns **201** and a JSON item with an ID. Invalid bodies return **400**; a non-JSON request returns **415**. Item `name` and `category` must be non-empty strings up to 100 characters.
 
