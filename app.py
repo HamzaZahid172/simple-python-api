@@ -13,12 +13,13 @@ def create_app():
     """Create an isolated app for development and tests."""
     app = Flask(__name__)
     app.config["ITEMS"] = [item.copy() for item in SEED_ITEMS]
+    app.config["NEXT_ITEM_ID"] = max(item["id"] for item in SEED_ITEMS) + 1
 
     @app.get("/")
     def home():
         return jsonify({
             "message": "Welcome to the Simple Python API",
-            "endpoints": ["/health", "/items", "/items/<id>", "/add-item"],
+            "endpoints": ["/health", "/items", "/items/<id>", "DELETE /items/<id>", "/add-item"],
         })
 
     @app.get("/health")
@@ -67,6 +68,15 @@ def create_app():
             return jsonify({"error": "Item not found"}), 404
         return jsonify(item)
 
+    @app.delete("/items/<int:item_id>")
+    def delete_item(item_id):
+        items = app.config["ITEMS"]
+        for index, item in enumerate(items):
+            if item["id"] == item_id:
+                items.pop(index)
+                return "", 204
+        return jsonify({"error": "Item not found"}), 404
+
     @app.post("/add-item")
     def add_item():
         if not request.is_json:
@@ -86,7 +96,8 @@ def create_app():
             return jsonify({"error": "name and category must be at most 100 characters"}), 400
 
         items = app.config["ITEMS"]
-        next_id = max((item["id"] for item in items), default=0) + 1
+        next_id = app.config["NEXT_ITEM_ID"]
+        app.config["NEXT_ITEM_ID"] += 1
         new_item = {"id": next_id, "name": name, "category": category}
         items.append(new_item)
         return jsonify({"message": "Item added successfully", "item": new_item}), 201

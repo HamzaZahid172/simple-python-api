@@ -27,6 +27,7 @@ API runs on **http://127.0.0.1:8000**. This demo uses an **in-memory store**, so
 | GET | `/items?category=course` | Filter items |
 | GET | `/items?limit=2&offset=1` | Paginate items, with total matching count |
 | GET | `/items/1` | Fetch one item or return 404 |
+| DELETE | `/items/1` | Delete an item (204) or return 404 |
 | POST | `/add-item` | Create item with JSON validation |
 
 Example:
@@ -36,6 +37,18 @@ curl -X POST http://127.0.0.1:8000/add-item \
   -H 'Content-Type: application/json' \
   -d '{"name":"Integration tests","category":"project"}'
 ```
+
+### Delete an item
+
+```bash
+curl -i -X DELETE http://127.0.0.1:8000/items/1
+```
+
+Deleting an existing item returns **204 No Content** with an empty response body.
+Deleting a missing or previously deleted item returns **404** with an explanatory JSON
+error. This demonstration stores items in memory: deletes reset on app restart.
+New item IDs increase monotonically within the app instance, so deleting an item
+does **not** cause its ID to be reused.
 
 ### Optional pagination
 
