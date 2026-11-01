@@ -31,7 +31,34 @@ def create_app():
         items = app.config["ITEMS"]
         if category is not None:
             items = [item for item in items if item["category"] == category]
-        return jsonify({"items": items, "count": len(items)})
+
+        # Preserve the existing response for callers not requesting pagination.
+        raw_limit = request.args.get("limit")
+        raw_offset = request.args.get("offset")
+        if raw_limit is None and raw_offset is None:
+            return jsonify({"items": items, "count": len(items)})
+
+        # Bound the numeric input before converting to an int.
+        def is_valid_number(value):
+            return value.isascii() and value.isdigit() and len(value) <= 9
+
+        if raw_limit is not None and (
+            not is_valid_number(raw_limit) or not 1 <= int(raw_limit) <= 100
+        ):
+            return jsonify({"error": "limit must be an integer between 1 and 100"}), 400
+        if raw_offset is not None and not is_valid_number(raw_offset):
+            return jsonify({"error": "offset must be a non-negative integer"}), 400
+
+        limit = int(raw_limit) if raw_limit is not None else 20
+        offset = int(raw_offset) if raw_offset is not None else 0
+        page = items[offset:offset + limit]
+        return jsonify({
+            "items": page,
+            "count": len(page),
+            "total": len(items),
+            "offset": offset,
+            "limit": limit,
+        })
 
     @app.get("/items/<int:item_id>")
     def get_item(item_id):
