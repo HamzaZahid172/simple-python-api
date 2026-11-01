@@ -35,6 +35,45 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.json["item"], {"id": 3, "name": "Flask", "category": "demo"})
         self.assertEqual(self.client.get("/items").json["count"], 3)
 
+    def test_delete_existing_item_returns_204_and_removes_it(self):
+        response = self.client.delete("/items/1")
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.data, b"")
+        self.assertEqual(self.client.get("/items/1").status_code, 404)
+        self.assertEqual(self.client.get("/items").json["count"], 1)
+
+    def test_delete_missing_item_returns_404(self):
+        self.assertEqual(self.client.delete("/items/999").status_code, 404)
+        self.assertEqual(self.client.delete("/items/999").json["error"], "Item not found")
+
+    def test_repeat_delete_is_idempotent_in_effect(self):
+        self.assertEqual(self.client.delete("/items/2").status_code, 204)
+        self.assertEqual(self.client.delete("/items/2").status_code, 404)
+        self.assertEqual(self.client.get("/items").json["count"], 1)
+
+    def test_deleted_ids_are_not_reused_and_app_instances_are_isolated(self):
+        self.assertEqual(self.client.delete("/items/2").status_code, 204)
+        first = self.client.post("/add-item", json={"name": "First", "category": "demo"})
+        second = self.client.post("/add-item", json={"name": "Second", "category": "demo"})
+        self.assertEqual(first.json["item"]["id"], 3)
+        self.assertEqual(second.json["item"]["id"], 4)
+        self.assertEqual(self.client.delete("/items/4").status_code, 204)
+        third = self.client.post("/add-item", json={"name": "Third", "category": "demo"})
+        self.assertEqual(third.json["item"]["id"], 5)
+        separate = create_app().test_client()
+        self.assertEqual(separate.get("/items").json["count"], 2)
+        self.assertEqual(
+            separate.post("/add-item", json={"name": "New", "category": "demo"}).json["item"]["id"],
+            3,
+        )
+
+    def test_deletion_updates_filtered_paginated_total(self):
+        self.client.post("/add-item", json={"name": "Demo", "category": "course"})
+        self.assertEqual(self.client.delete("/items/2").status_code, 204)
+        result = self.client.get("/items?category=course&limit=1&offset=0")
+        self.assertEqual(result.json["total"], 2)
+        self.assertEqual(result.json["count"], 1)
+
     def test_non_json_content_type_rejected(self):
         response = self.client.post("/add-item", data="name=test")
         self.assertEqual(response.status_code, 415)
